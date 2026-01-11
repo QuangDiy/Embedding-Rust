@@ -9,6 +9,7 @@ Models are saved to the Triton model repository structure.
 */
 
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use anyhow::{Context, Result};
 

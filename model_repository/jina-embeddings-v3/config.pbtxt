@@ -1,6 +1,7 @@
 name: "jina-embeddings-v3"
 backend: "onnxruntime"
 max_batch_size: 8
+default_model_filename: "model_fp16.onnx"
 
 input [
   {
