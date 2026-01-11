@@ -1,0 +1,71 @@
+services:
+  model-downloader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: model-downloader
+    command: /app/download_models
+    volumes:
+      - ./model_repository:/app/model_repository
+    networks:
+      - embedding-network
+    restart: "no"
+
+  embedding-rust-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: embedding-rust-api
+    ports:
+      - "8000:8000"
+    environment:
+      - TRITON_URL=triton:8000
+      - TRITON_HTTP_CONNECTION_TIMEOUT=300
+      - TRITON_HTTP_NETWORK_TIMEOUT=300
+      - EMBEDDING_MODEL_NAME=jina-embeddings-v3
+      - RERANKER_MODEL_NAME=jina-reranker-v2
+      - TOKENIZER_PATH=jinaai/jina-embeddings-v3
+      - RERANKER_TOKENIZER_PATH=jinaai/jina-reranker-v2-base-multilingual
+      - MAX_SEQUENCE_LENGTH=8192
+      - RERANKER_MAX_SEQUENCE_LENGTH=1024
+      - EMBEDDING_CLIENT_MAX_BATCH=8
+      - RUST_LOG=info
+    depends_on:
+      - triton
+    networks:
+      - embedding-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  triton:
+    image: nvcr.io/nvidia/tritonserver:23.10-py3
+    container_name: triton-server
+    command: tritonserver --model-repository=/models --strict-model-config=false
+    depends_on:
+      model-downloader:
+        condition: service_completed_successfully
+    ports:
+      - "8001:8001"  # HTTP
+      - "8002:8002"  # gRPC
+    volumes:
+      - ./model_repository:/models
+    networks:
+      - embedding-network
+    restart: unless-stopped
+    # GPU deployment (uncomment if you have NVIDIA GPU + drivers in WSL2)
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+networks:
+  embedding-network:
+    driver: bridge

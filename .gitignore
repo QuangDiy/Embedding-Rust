@@ -1,0 +1,14 @@
+/target
+.env
+
+# Model files
+model_repository/*/1/*.onnx
+model_repository/*/1/*.onnx_data
+model_repository/*/1/*.model
+model_repository/*/1/*.json
+model_repository/*/1/*.pt
+model_repository/*/1/*.pth
+model_repository/*/1/*.bin
+model_repository/*/1/Constant_*
+# Keep .gitkeep
+!model_repository/*/1/.gitkeep
