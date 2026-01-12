@@ -2,6 +2,7 @@ use crate::error::AppError;
 use crate::config::Settings;
 use tokenizers::tokenizer::Tokenizer;
 use std::sync::OnceLock;
+use tracing::{info, error};
 
 static EMBEDDING_TOKENIZER: OnceLock<Tokenizer> = OnceLock::new();
 static RERANKER_TOKENIZER: OnceLock<Tokenizer> = OnceLock::new();
@@ -15,23 +16,49 @@ impl TokenizerService {
 
     pub fn load_embedding_tokenizer() -> Result<(), AppError> {
         let settings = Settings::get();
-        let tokenizer = Tokenizer::from_pretrained(&settings.tokenizer_path, None)
-            .map_err(|e| AppError::Tokenization(format!("Failed to load embedding tokenizer: {}", e)))?;
+        
+        let file_path = settings.tokenizer_file.as_ref()
+            .ok_or_else(|| {
+                error!("TOKENIZER_FILE environment variable not set. Please set it to the path of tokenizer.json");
+                AppError::Tokenization("TOKENIZER_FILE not configured".to_string())
+            })?;
+        
+        info!("Loading embedding tokenizer from: {}", file_path);
+        let tokenizer = Tokenizer::from_file(file_path)
+            .map_err(|e| {
+                error!("Failed to load embedding tokenizer from {}: {}", file_path, e);
+                AppError::Tokenization(format!("Failed to load tokenizer: {}", e))
+            })?;
         
         EMBEDDING_TOKENIZER.set(tokenizer).map_err(|_| 
             AppError::Internal("Embedding tokenizer already initialized".to_string())
         )?;
+        
+        info!("Embedding tokenizer loaded successfully");
         Ok(())
     }
 
     pub fn load_reranker_tokenizer() -> Result<(), AppError> {
         let settings = Settings::get();
-        let tokenizer = Tokenizer::from_pretrained(&settings.reranker_tokenizer_path, None)
-            .map_err(|e| AppError::Tokenization(format!("Failed to load reranker tokenizer: {}", e)))?;
+        
+        let file_path = settings.reranker_tokenizer_file.as_ref()
+            .ok_or_else(|| {
+                error!("RERANKER_TOKENIZER_FILE environment variable not set. Please set it to the path of tokenizer.json");
+                AppError::Tokenization("RERANKER_TOKENIZER_FILE not configured".to_string())
+            })?;
+        
+        info!("Loading reranker tokenizer from: {}", file_path);
+        let tokenizer = Tokenizer::from_file(file_path)
+            .map_err(|e| {
+                error!("Failed to load reranker tokenizer from {}: {}", file_path, e);
+                AppError::Tokenization(format!("Failed to load tokenizer: {}", e))
+            })?;
         
         RERANKER_TOKENIZER.set(tokenizer).map_err(|_| 
             AppError::Internal("Reranker tokenizer already initialized".to_string())
         )?;
+        
+        info!("Reranker tokenizer loaded successfully");
         Ok(())
     }
 

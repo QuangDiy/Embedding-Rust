@@ -6,7 +6,7 @@ mod repositories;
 mod services;
 
 use std::sync::Arc;
-use tracing::info;
+use tracing::{info, error};
 use tracing_subscriber;
 
 use api::{create_router, health::AppState};
@@ -18,8 +18,7 @@ use services::{
 };
 
 #[tokio::main]
-async fn main() {
-    // Initialize tracing/logging
+async fn main() {    
     tracing_subscriber::fmt()
         .with_target(false)
         .compact()
@@ -27,29 +26,55 @@ async fn main() {
 
     info!("Starting Embedding Rust API...");
 
-    // Load settings
+    // Load settings (this may panic if config is invalid)
+    println!("==> Loading settings...");
     let settings = Settings::get();
+    println!("==> Settings loaded successfully");
     info!("Loaded settings");
 
     // Initialize tokenizers
     info!("Loading embedding tokenizer...");
-    TokenizerService::load_embedding_tokenizer()
-        .expect("Failed to load embedding tokenizer");
-    info!("Embedding tokenizer loaded");
+    match TokenizerService::load_embedding_tokenizer() {
+        Ok(_) => info!("Embedding tokenizer loaded successfully"),
+        Err(e) => {
+            error!("Failed to load embedding tokenizer: {:?}", e);
+            panic!("Cannot start without embedding tokenizer: {:?}", e);
+        }
+    }
 
     info!("Loading reranker tokenizer...");
-    TokenizerService::load_reranker_tokenizer()
-        .expect("Failed to load reranker tokenizer");
-    info!("Reranker tokenizer loaded");
+    match TokenizerService::load_reranker_tokenizer() {
+        Ok(_) => info!("Reranker tokenizer loaded successfully"),
+        Err(e) => {
+            error!("Failed to load reranker tokenizer: {:?}", e);
+            panic!("Cannot start without reranker tokenizer: {:?}", e);
+        }
+    }
 
     // Create services
     info!("Initializing embedding service...");
-    let embedding_service = EmbeddingService::new()
-        .expect("Failed to create embedding service");
+    let embedding_service = match EmbeddingService::new() {
+        Ok(service) => {
+            info!("Embedding service initialized");
+            service
+        }
+        Err(e) => {
+            error!("Failed to create embedding service: {:?}", e);
+            panic!("Cannot start without embedding service: {:?}", e);
+        }
+    };
     
     info!("Initializing reranking service...");
-    let reranking_service = RerankingService::new()
-        .expect("Failed to create reranking service");
+    let reranking_service = match RerankingService::new() {
+        Ok(service) => {
+            info!("Reranking service initialized");
+            service
+        }
+        Err(e) => {
+            error!("Failed to create reranking service: {:?}", e);
+            panic!("Cannot start without reranking service: {:?}", e);
+        }
+    };
 
     // Create shared state
     let state = Arc::new(AppState {
@@ -83,7 +108,7 @@ async fn main() {
         .await
         .expect("Failed to bind to address");
 
-    info!("🚀 {} v{} listening on http://{}", 
+    info!("{} v{} listening on http://{}", 
         settings.api_title,
         settings.api_version,
         addr

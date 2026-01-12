@@ -1,5 +1,6 @@
 /target
 .env
+.agent
 
 # Model files
 model_repository/*/1/*.onnx

@@ -17,7 +17,7 @@ const HF_BASE_URL: &str = "https://huggingface.co";
 
 struct ModelDownload {
     repo_id: &'static str,
-    file_path: &'static str,
+    files: &'static [&'static str],
     target_dir: &'static str,
     model_name: &'static str,
 }
@@ -25,14 +25,26 @@ struct ModelDownload {
 impl ModelDownload {
     const EMBEDDINGS: ModelDownload = ModelDownload {
         repo_id: "jinaai/jina-embeddings-v3",
-        file_path: "onnx/model_fp16.onnx",
+        files: &[
+            "onnx/model_fp16.onnx",
+            "tokenizer.json",
+            "config.json",
+            "tokenizer_config.json",
+            "special_tokens_map.json",
+        ],
         target_dir: "model_repository/jina-embeddings-v3/1",
         model_name: "Jina Embeddings v3",
     };
 
     const RERANKER: ModelDownload = ModelDownload {
         repo_id: "jinaai/jina-reranker-v2-base-multilingual",
-        file_path: "onnx/model_fp16.onnx",
+        files: &[
+            "onnx/model_fp16.onnx",
+            "tokenizer.json",
+            "config.json",
+            "tokenizer_config.json",
+            "special_tokens_map.json",
+        ],
         target_dir: "model_repository/jina-reranker-v2/1",
         model_name: "Jina Reranker v2 Base Multilingual",
     };
@@ -43,31 +55,42 @@ fn ensure_dir(path: &Path) -> Result<()> {
         .with_context(|| format!("Failed to create directory: {}", path.display()))
 }
 
-async fn download_model(model: &ModelDownload) -> Result<bool> {
-    println!("\n{}", "=".repeat(50));
-    println!("Downloading {}", model.model_name);
-    println!("{}", "=".repeat(50));
-    println!("Repository: {}", model.repo_id);
-    println!("File: {}", model.file_path);
-    println!("Target directory: {}\n", model.target_dir);
+async fn download_file(
+    repo_id: &str,
+    file_path: &str,
+    target_dir: &Path,
+    client: &reqwest::Client,
+) -> Result<bool> {
+    let file_name = Path::new(file_path)
+        .file_name()
+        .context("Invalid file path")?;
+    let target_file = target_dir.join(file_name);
 
-    let target_dir = Path::new(model.target_dir);
-    ensure_dir(target_dir)?;
+    if target_file.exists() {
+        if let Ok(metadata) = fs::metadata(&target_file) {
+            let file_size = metadata.len();
+            let min_size = if file_path.ends_with(".onnx") { 1024 * 1024 } else { 100 }; // 1MB for ONNX, 100 bytes for others
+            if file_size > min_size {
+                let file_size_display = if file_size > 1024 * 1024 {
+                    format!("{:.2} MB", file_size as f64 / (1024.0 * 1024.0))
+                } else {
+                    format!("{:.2} KB", file_size as f64 / 1024.0)
+                };
+                println!("  {} already exists ({})", file_name.to_string_lossy(), file_size_display);
+                return Ok(true);
+            } else {
+                println!("  {} corrupted, re-downloading...", file_name.to_string_lossy());
+            }
+        }
+    }
 
-    // Construct Hugging Face download URL
     let download_url = format!(
         "{}/{}/resolve/main/{}",
-        HF_BASE_URL, model.repo_id, model.file_path
+        HF_BASE_URL, repo_id, file_path
     );
 
-    println!("Download URL: {}", download_url);
+    println!("  Downloading {}...", file_name.to_string_lossy());
 
-    // Create HTTP client
-    let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(3600)) // 1 hour timeout
-        .build()?;
-
-    // Download file
     let response = client
         .get(&download_url)
         .send()
@@ -81,16 +104,7 @@ async fn download_model(model: &ModelDownload) -> Result<bool> {
         );
     }
 
-    // Get file name from path
-    let file_name = Path::new(model.file_path)
-        .file_name()
-        .context("Invalid file path")?;
-    let target_file = target_dir.join(file_name);
-
-    // Write file with progress
     let total_size = response.content_length().unwrap_or(0);
-    println!("Total size: {:.2} MB", total_size as f64 / (1024.0 * 1024.0));
-
     let mut file = fs::File::create(&target_file)
         .with_context(|| format!("Failed to create file: {}", target_file.display()))?;
 
@@ -99,6 +113,8 @@ async fn download_model(model: &ModelDownload) -> Result<bool> {
 
     use futures_util::StreamExt;
     
+    let show_progress = total_size > 10 * 1024 * 1024; // > 10MB
+    
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Error reading chunk")?;
         file.write_all(&chunk)
@@ -106,25 +122,63 @@ async fn download_model(model: &ModelDownload) -> Result<bool> {
         
         downloaded += chunk.len() as u64;
         
-        if total_size > 0 {
+        if show_progress && total_size > 0 {
             let progress = (downloaded as f64 / total_size as f64) * 100.0;
-            print!("\rProgress: {:.2}%", progress);
+            print!("\r    Progress: {:.1}%", progress);
             std::io::stdout().flush().ok();
         }
     }
     
-    println!();
+    if show_progress {
+        println!();
+    }
 
-    // Verify file was created
     if target_file.exists() {
-        let file_size = fs::metadata(&target_file)?.len() as f64 / (1024.0 * 1024.0);
-        println!("✓ Downloaded to: {}", target_file.display());
-        println!("  File size: {:.2} MB", file_size);
+        let file_size = fs::metadata(&target_file)?.len();
+        let size_display = if file_size > 1024 * 1024 {
+            format!("{:.2} MB", file_size as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.2} KB", file_size as f64 / 1024.0)
+        };
+        println!("  Downloaded {} ({})", file_name.to_string_lossy(), size_display);
         Ok(true)
     } else {
-        println!("✗ Model file not found at expected location: {}", target_file.display());
+        println!("  Failed to download {}", file_name.to_string_lossy());
         Ok(false)
     }
+}
+
+async fn download_model(model: &ModelDownload) -> Result<bool> {
+    println!("\n{}", "=".repeat(50));
+    println!("{}", model.model_name);
+    println!("{}", "=".repeat(50));
+    println!("Repository: {}", model.repo_id);
+    println!("Target: {}", model.target_dir);
+    println!();
+
+    let target_dir = Path::new(model.target_dir);
+    ensure_dir(target_dir)?;
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(3600))
+        .build()?;
+
+    let mut success_count = 0;
+    let mut fail_count = 0;
+
+    for file_path in model.files {
+        match download_file(model.repo_id, file_path, target_dir, &client).await {
+            Ok(true) => success_count += 1,
+            Ok(false) => fail_count += 1,
+            Err(e) => {
+                println!("  Error downloading {}: {}", file_path, e);
+                fail_count += 1;
+            }
+        }
+    }
+
+    println!("\n{} files ready, {} failed", success_count, fail_count);
+    Ok(fail_count == 0)
 }
 
 #[tokio::main]

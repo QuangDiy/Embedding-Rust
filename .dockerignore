@@ -2,10 +2,14 @@
 .git
 .gitignore
 
-# Rust
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Build artifacts
 target/
-**/*.rs.bk
-Cargo.lock
+**/target/
 
 # IDE
 .vscode/
@@ -14,17 +18,23 @@ Cargo.lock
 *.swo
 *~
 
-# Environment
-.env
-.env.local
-
-# Documentation
-README.md
-*.md
-
 # OS
 .DS_Store
 Thumbs.db
 
 # Logs
 *.log
+
+# Environment
+.env
+.env.local
+
+# Documentation (if not needed in container)
+README.md
+docs/
+
+# CI/CD
+.github/
+
+# Keep .cargo directory for config
+!.cargo/

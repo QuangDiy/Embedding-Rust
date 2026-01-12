@@ -26,6 +26,10 @@ pub struct Settings {
     #[serde(default = "default_reranker_tokenizer_path")]
     pub reranker_tokenizer_path: String,
 
+    pub tokenizer_file: Option<String>,
+
+    pub reranker_tokenizer_file: Option<String>,
+
     #[serde(default = "default_max_sequence_length")]
     pub max_sequence_length: usize,
 
@@ -106,12 +110,24 @@ impl Settings {
             .add_source(config::Environment::default().separator("_"))
             .build()?;
 
-        settings.try_deserialize()
+        let mut settings: Settings = settings.try_deserialize()?;
+        
+        settings.tokenizer_file = std::env::var("TOKENIZER_FILE").ok();
+        settings.reranker_tokenizer_file = std::env::var("RERANKER_TOKENIZER_FILE").ok();
+        
+        Ok(settings)
     }
 
     pub fn get() -> &'static Settings {
         SETTINGS.get_or_init(|| {
-            Settings::new().expect("Failed to load settings")
+            match Settings::new() {
+                Ok(s) => s,
+                Err(e) => {
+                    eprintln!("FATAL: Failed to load settings: {}", e);
+                    eprintln!("Error details: {:?}", e);
+                    panic!("Cannot continue without valid settings: {}", e);
+                }
+            }
         })
     }
 }

@@ -1,0 +1,43 @@
+# Cargo configuration for faster and more reliable builds
+
+[net]
+# Increase retry attempts for network operations
+retry = 10
+# Increase timeout to 5 minutes (300 seconds)
+git-fetch-with-cli = true
+
+[http]
+# Disable HTTP/2 multiplexing to avoid protocol errors
+multiplexing = false
+# Set timeout to 5 minutes
+timeout = 300
+
+# Use a faster mirror (choose one based on your location)
+# Uncomment the mirror closest to you
+
+# USTC Mirror (China - generally fast in Asia)
+[source.crates-io]
+replace-with = "ustc"
+
+[source.ustc]
+registry = "https://mirrors.ustc.edu.cn/crates.io-index"
+
+# Alternative mirrors (uncomment to use):
+
+# [source.crates-io]
+# replace-with = "sjtu"
+# 
+# [source.sjtu]
+# registry = "https://mirrors.sjtug.sjtu.edu.cn/git/crates.io-index"
+
+# [source.crates-io]
+# replace-with = "tuna"
+# 
+# [source.tuna]
+# registry = "https://mirrors.tuna.tsinghua.edu.cn/git/crates.io-index.git"
+
+# [source.crates-io]
+# replace-with = "rsproxy"
+# 
+# [source.rsproxy]
+# registry = "https://rsproxy.cn/crates.io-index"

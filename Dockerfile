@@ -1,5 +1,5 @@
 # Build stage
-FROM rust:1.83-slim as builder
+FROM rust:1.83-slim AS builder
 
 WORKDIR /app
 
@@ -8,7 +8,18 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     build-essential \
+    git \
     && rm -rf /var/lib/apt/lists/*
+
+# Configure Cargo for better network reliability
+ENV CARGO_NET_RETRY=10
+ENV CARGO_NET_TIMEOUT=300
+ENV CARGO_HTTP_TIMEOUT=300
+ENV CARGO_HTTP_MULTIPLEXING=false
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+
+# Copy Cargo configuration for mirrors
+COPY .cargo/config.toml /usr/local/cargo/config.toml
 
 # Copy manifests
 COPY Cargo.toml ./
@@ -23,7 +34,10 @@ RUN mkdir src && \
 COPY src ./src
 
 # Build application and download tool
-RUN cargo build --release && \
+# Remove the dummy binary and force rebuild with actual source
+RUN rm -f target/release/embedding-rust target/release/download_models && \
+    touch src/main.rs && \
+    cargo build --release && \
     cargo build --release --bin download_models
 
 # Runtime stage
