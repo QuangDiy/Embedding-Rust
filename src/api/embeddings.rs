@@ -15,10 +15,19 @@ use crate::models::{
     post,
     path = "/v1/embeddings",
     tag = "Embeddings",
-    request_body = EmbeddingRequest,
+    request_body(
+        content = EmbeddingRequest,
+        description = "Embedding request with task type selection",
+        example = json!({
+            "input": ["Xin chào, bạn khỏe không?", "Machine learning là gì?"],
+            "model": "jina-embeddings-v3",
+            "task": "retrieval.query",
+            "encoding_format": "float"
+        })
+    ),
     responses(
         (status = 200, description = "Successfully generated embeddings", body = EmbeddingResponse),
-        (status = 400, description = "Bad request"),
+        (status = 400, description = "Bad request - invalid task type or input"),
         (status = 500, description = "Internal server error")
     )
 )]

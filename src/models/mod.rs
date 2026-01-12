@@ -2,22 +2,43 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 // Request/Response models
+/// Embedding request with support for different task types
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "input": ["Xin chào, bạn khỏe không?", "Machine learning là gì?"],
+    "model": "jina-embeddings-v3",
+    "task": "retrieval.query",
+    "encoding_format": "float"
+}))]
 pub struct EmbeddingRequest {
+    /// Input text(s) to generate embeddings for
+    #[schema(example = json!(["Xin chào, bạn khỏe không?", "Machine learning là gì?"]))]
     pub input: InputText,
     #[serde(default = "default_model")]
+    #[schema(default = "jina-embeddings-v3")]
     pub model: String,
     #[serde(default = "default_encoding_format")]
+    #[schema(default = "float")]
     pub encoding_format: String,
+    /// Task type for LoRA adapter selection. Valid values:
+    /// - "retrieval.query" (default): For search queries
+    /// - "retrieval.passage": For document passages
+    /// - "separation": For text separation tasks
+    /// - "classification": For classification tasks
+    /// - "text-matching": For text matching tasks
     #[serde(default = "default_task")]
+    #[schema(default = "retrieval.query")]
     pub task: String,
     pub user: Option<String>,
 }
 
+/// Input text can be a single string or an array of strings
 #[derive(Debug, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum InputText {
+    /// Single text input
     Single(String),
+    /// Multiple text inputs for batch processing
     Multiple(Vec<String>),
 }
 
@@ -53,13 +74,29 @@ pub struct EmbeddingUsage {
 
 // Reranking models
 #[derive(Debug, Deserialize, ToSchema)]
+#[schema(example = json!({
+    "query": "Machine learning là gì?",
+    "documents": [
+        "Machine learning là một nhánh của trí tuệ nhân tạo.",
+        "Python là ngôn ngữ lập trình phổ biến.",
+        "Deep learning sử dụng mạng neural nhiều lớp."
+    ],
+    "model": "jina-reranker-v2",
+    "top_n": 2,
+    "return_documents": true
+}))]
 pub struct RerankRequest {
+    #[schema(example = "Machine learning là gì?")]
     pub query: String,
+    #[schema(example = json!(["Machine learning là một nhánh của trí tuệ nhân tạo.", "Python là ngôn ngữ lập trình phổ biến."]))]
     pub documents: Vec<DocumentInput>,
     #[serde(default = "default_rerank_model")]
+    #[schema(default = "jina-reranker-v2")]
     pub model: String,
+    #[schema(example = 2)]
     pub top_n: Option<usize>,
     #[serde(default = "default_return_documents")]
+    #[schema(default = true)]
     pub return_documents: bool,
 }
 
