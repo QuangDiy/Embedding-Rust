@@ -11,6 +11,17 @@ use crate::models::{
     RerankRequest, RerankResponse, RerankResult, RerankUsage,
 };
 
+#[utoipa::path(
+    post,
+    path = "/v1/rerank",
+    tag = "Reranking",
+    request_body = RerankRequest,
+    responses(
+        (status = 200, description = "Successfully reranked documents", body = RerankResponse),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn rerank_documents(
     State(state): State<Arc<AppState>>,
     Json(request): Json<RerankRequest>,

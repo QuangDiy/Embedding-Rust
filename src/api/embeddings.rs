@@ -11,6 +11,17 @@ use crate::models::{
     EmbeddingRequest, EmbeddingResponse, EmbeddingData, EmbeddingUsage,
 };
 
+#[utoipa::path(
+    post,
+    path = "/v1/embeddings",
+    tag = "Embeddings",
+    request_body = EmbeddingRequest,
+    responses(
+        (status = 200, description = "Successfully generated embeddings", body = EmbeddingResponse),
+        (status = 400, description = "Bad request"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_embeddings(
     State(state): State<Arc<AppState>>,
     Json(request): Json<EmbeddingRequest>,

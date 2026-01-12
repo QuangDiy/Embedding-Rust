@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 // Request/Response models
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct EmbeddingRequest {
     pub input: InputText,
     #[serde(default = "default_model")]
@@ -13,7 +14,7 @@ pub struct EmbeddingRequest {
     pub user: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum InputText {
     Single(String),
@@ -29,7 +30,7 @@ impl InputText {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EmbeddingResponse {
     pub object: String,
     pub data: Vec<EmbeddingData>,
@@ -37,21 +38,21 @@ pub struct EmbeddingResponse {
     pub usage: EmbeddingUsage,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EmbeddingData {
     pub object: String,
     pub embedding: Vec<f32>,
     pub index: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct EmbeddingUsage {
     pub prompt_tokens: usize,
     pub total_tokens: usize,
 }
 
 // Reranking models
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RerankRequest {
     pub query: String,
     pub documents: Vec<DocumentInput>,
@@ -62,7 +63,7 @@ pub struct RerankRequest {
     pub return_documents: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum DocumentInput {
     Text(String),
@@ -78,7 +79,7 @@ impl DocumentInput {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RerankResponse {
     pub object: String,
     pub data: Vec<RerankResult>,
@@ -86,7 +87,7 @@ pub struct RerankResponse {
     pub usage: RerankUsage,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RerankResult {
     pub index: usize,
     pub relevance_score: f32,
@@ -94,7 +95,7 @@ pub struct RerankResult {
     pub document: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct RerankUsage {
     pub total_tokens: usize,
 }

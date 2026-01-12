@@ -12,6 +12,24 @@ This is a Rust port of the original Python FastAPI application, providing the sa
 - 📊 **Dual Functionality**: Supports both embeddings and reranking
 - 🔒 **Type Safe**: Rust's type system ensures reliability
 
+## API Documentation
+
+The API includes interactive Swagger UI documentation for easy testing and exploration.
+
+### Accessing Swagger UI
+
+Once the server is running, access the Swagger UI at:
+
+```
+http://localhost:8000/swagger-ui
+```
+
+The Swagger UI provides:
+- **Interactive API testing**: Try out endpoints directly from your browser
+- **Request/Response schemas**: View detailed model definitions
+- **Example requests**: Pre-filled examples for quick testing
+- **OpenAPI specification**: Download the full API spec at `/api-docs/openapi.json`
+
 ## API Endpoints
 
 ### Embeddings

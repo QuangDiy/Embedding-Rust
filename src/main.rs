@@ -26,10 +26,9 @@ async fn main() {
 
     info!("Starting Embedding Rust API...");
 
-    // Load settings (this may panic if config is invalid)
-    println!("==> Loading settings...");
+    println!("Loading settings...");
     let settings = Settings::get();
-    println!("==> Settings loaded successfully");
+    println!("Settings loaded successfully");
     info!("Loaded settings");
 
     // Initialize tokenizers
