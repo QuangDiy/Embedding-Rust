@@ -55,8 +55,9 @@ services:
       model-downloader-rs:
         condition: service_completed_successfully
     ports:
-      - "8001:8001"  # HTTP
-      - "8002:8002"  # gRPC
+      - "8001:8000"  # HTTP (Triton uses 8000 internally)
+      - "8002:8001"  # gRPC
+      - "8003:8002"  # Metrics
     volumes:
       - ./model_repository:/models
     networks:

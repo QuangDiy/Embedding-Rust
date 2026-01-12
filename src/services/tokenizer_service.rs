@@ -75,6 +75,7 @@ impl TokenizerService {
         let mut all_input_ids = Vec::new();
         let mut all_attention_masks = Vec::new();
 
+        // First pass: tokenize and truncate if needed
         for text in texts {
             let encoding = tokenizer
                 .encode(text.clone(), true)
@@ -83,18 +84,32 @@ impl TokenizerService {
             let mut input_ids: Vec<i64> = encoding.get_ids().iter().map(|&x| x as i64).collect();
             let mut attention_mask: Vec<i64> = encoding.get_attention_mask().iter().map(|&x| x as i64).collect();
 
-            // Truncate or pad to max_length
+            // Truncate if exceeds max_length
             if input_ids.len() > max_length {
                 input_ids.truncate(max_length);
                 attention_mask.truncate(max_length);
-            } else {
-                let padding = max_length - input_ids.len();
-                input_ids.extend(vec![0; padding]);
-                attention_mask.extend(vec![0; padding]);
             }
 
             all_input_ids.push(input_ids);
             all_attention_masks.push(attention_mask);
+        }
+
+        // Find the longest sequence in this batch
+        let batch_max_length = all_input_ids.iter()
+            .map(|ids| ids.len())
+            .max()
+            .unwrap_or(0);
+
+        info!("Batch padding: longest sequence = {} tokens (max allowed = {})", 
+              batch_max_length, max_length);
+
+        // Second pass: pad all sequences to the batch max length
+        for (input_ids, attention_mask) in all_input_ids.iter_mut().zip(all_attention_masks.iter_mut()) {
+            let padding = batch_max_length - input_ids.len();
+            if padding > 0 {
+                input_ids.extend(vec![0; padding]);
+                attention_mask.extend(vec![0; padding]);
+            }
         }
 
         Ok((all_input_ids, all_attention_masks))
@@ -114,6 +129,7 @@ impl TokenizerService {
         let mut all_input_ids = Vec::new();
         let mut all_attention_masks = Vec::new();
 
+        // First pass: tokenize and truncate if needed
         for doc in documents {
             // Combine query and document
             let combined = format!("{} [SEP] {}", query, doc);
@@ -125,18 +141,32 @@ impl TokenizerService {
             let mut input_ids: Vec<i64> = encoding.get_ids().iter().map(|&x| x as i64).collect();
             let mut attention_mask: Vec<i64> = encoding.get_attention_mask().iter().map(|&x| x as i64).collect();
 
-            // Truncate or pad to max_length
+            // Truncate if exceeds max_length
             if input_ids.len() > max_length {
                 input_ids.truncate(max_length);
                 attention_mask.truncate(max_length);
-            } else {
-                let padding = max_length - input_ids.len();
-                input_ids.extend(vec![0; padding]);
-                attention_mask.extend(vec![0; padding]);
             }
 
             all_input_ids.push(input_ids);
             all_attention_masks.push(attention_mask);
+        }
+
+        // Find the longest sequence in this batch
+        let batch_max_length = all_input_ids.iter()
+            .map(|ids| ids.len())
+            .max()
+            .unwrap_or(0);
+
+        info!("Reranking batch padding: longest sequence = {} tokens (max allowed = {})", 
+              batch_max_length, max_length);
+
+        // Second pass: pad all sequences to the batch max length
+        for (input_ids, attention_mask) in all_input_ids.iter_mut().zip(all_attention_masks.iter_mut()) {
+            let padding = batch_max_length - input_ids.len();
+            if padding > 0 {
+                input_ids.extend(vec![0; padding]);
+                attention_mask.extend(vec![0; padding]);
+            }
         }
 
         Ok((all_input_ids, all_attention_masks))

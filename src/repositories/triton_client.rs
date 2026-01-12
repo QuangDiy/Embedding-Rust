@@ -82,6 +82,9 @@ impl TritonClient {
         let batch_size = input_ids.len();
         let seq_length = input_ids[0].len();
 
+        info!("Preparing inference request: batch_size={}, seq_length={}, task_id={}", 
+              batch_size, seq_length, task_id);
+
         // Flatten input_ids and attention_mask
         let flat_input_ids: Vec<i64> = input_ids.iter().flatten().copied().collect();
         let flat_attention_mask: Vec<i64> = attention_mask.iter().flatten().copied().collect();
@@ -114,6 +117,7 @@ impl TritonClient {
         };
 
         let url = format!("{}/v2/models/{}/infer", self.triton_url, self.model_name);
+        info!("Sending inference request to: {}", url);
         
         let response = self.client
             .post(&url)
@@ -121,10 +125,13 @@ impl TritonClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        info!("Received response with status: {}", status);
+
+        if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            error!("Triton inference failed: {}", error_text);
-            return Err(AppError::Inference(format!("Triton returned error: {}", error_text)));
+            error!("Triton inference failed with status {}: {}", status, error_text);
+            return Err(AppError::Inference(format!("Triton returned error {}: {}", status, error_text)));
         }
 
         let infer_response: TritonInferResponse = response.json().await
