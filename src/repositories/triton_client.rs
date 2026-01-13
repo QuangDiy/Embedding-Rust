@@ -156,8 +156,36 @@ impl TritonClient {
         input_ids: &[Vec<i64>],
         attention_mask: &[Vec<i64>],
     ) -> Result<Vec<f32>, AppError> {
+        if input_ids.is_empty() {
+            return Err(AppError::Validation("input_ids cannot be empty".to_string()));
+        }
+
         let batch_size = input_ids.len();
         let seq_length = input_ids[0].len();
+
+        // Validate that all sequences have the same length
+        for (i, ids) in input_ids.iter().enumerate() {
+            if ids.len() != seq_length {
+                error!("Sequence length mismatch at index {}: expected {}, got {}", i, seq_length, ids.len());
+                return Err(AppError::Validation(
+                    format!("All input sequences must have the same length. Expected {}, but sequence {} has length {}", 
+                            seq_length, i, ids.len())
+                ));
+            }
+        }
+
+        for (i, mask) in attention_mask.iter().enumerate() {
+            if mask.len() != seq_length {
+                error!("Attention mask length mismatch at index {}: expected {}, got {}", i, seq_length, mask.len());
+                return Err(AppError::Validation(
+                    format!("All attention masks must have the same length. Expected {}, but mask {} has length {}", 
+                            seq_length, i, mask.len())
+                ));
+            }
+        }
+
+        info!("Preparing reranking inference request: batch_size={}, seq_length={}", 
+              batch_size, seq_length);
 
         let flat_input_ids: Vec<i64> = input_ids.iter().flatten().copied().collect();
         let flat_attention_mask: Vec<i64> = attention_mask.iter().flatten().copied().collect();
@@ -178,11 +206,12 @@ impl TritonClient {
                 },
             ],
             outputs: vec![TritonInferenceOutput {
-                name: "scores".to_string(),
+                name: "logits".to_string(),
             }],
         };
 
         let url = format!("{}/v2/models/{}/infer", self.triton_url, self.model_name);
+        info!("Sending reranking inference request to: {}", url);
         
         let response = self.client
             .post(&url)
@@ -190,15 +219,20 @@ impl TritonClient {
             .send()
             .await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        info!("Received reranking response with status: {}", status);
+
+        if !status.is_success() {
             let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::Inference(format!("Triton returned error: {}", error_text)));
+            error!("Triton reranking inference failed with status {}: {}", status, error_text);
+            return Err(AppError::Inference(format!("Triton returned error {}: {}", status, error_text)));
         }
 
         let infer_response: TritonInferResponse = response.json().await
             .map_err(|e| AppError::Inference(format!("Failed to parse response: {}", e)))?;
 
         if let Some(output) = infer_response.outputs.first() {
+            info!("Reranking scores shape: [{}]", output.data.len());
             Ok(output.data.clone())
         } else {
             Err(AppError::Inference("No output from Triton".to_string()))
