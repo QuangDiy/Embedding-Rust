@@ -1,6 +1,7 @@
 mod api;
 mod config;
 mod error;
+mod middleware;
 mod models;
 mod repositories;
 mod services;
@@ -30,6 +31,8 @@ async fn main() {
     let settings = Settings::get();
     println!("Settings loaded successfully");
     info!("Loaded settings");
+    info!("API Key configured: {}", settings.api_key.is_some());
+    info!("Require API Key: {}", settings.require_api_key);
 
     // Initialize tokenizers
     info!("Loading embedding tokenizer...");

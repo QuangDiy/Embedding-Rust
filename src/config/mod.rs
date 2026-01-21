@@ -115,6 +115,14 @@ impl Settings {
         settings.tokenizer_file = std::env::var("TOKENIZER_FILE").ok();
         settings.reranker_tokenizer_file = std::env::var("RERANKER_TOKENIZER_FILE").ok();
         
+        settings.api_key = std::env::var("API_KEY").ok();
+        
+        if let Ok(require_str) = std::env::var("REQUIRE_API_KEY") {
+            settings.require_api_key = require_str.to_lowercase() == "true" 
+                || require_str == "1" 
+                || require_str.to_lowercase() == "yes";
+        }
+        
         Ok(settings)
     }
 

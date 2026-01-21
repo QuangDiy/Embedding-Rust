@@ -78,6 +78,17 @@ All configuration is done via environment variables (loaded from `.env` file):
 | `TOKENIZER_PATH` | `jinaai/jina-embeddings-v3` | Embedding tokenizer path |
 | `MAX_SEQUENCE_LENGTH` | `8192` | Max sequence length for embeddings |
 | `EMBEDDING_CLIENT_MAX_BATCH` | `8` | Max batch size for processing |
+| `API_KEY` | - | API key for authentication (if REQUIRE_API_KEY=true) |
+| `REQUIRE_API_KEY` | `false` | Enable API key authentication |
+
+### API Authentication
+
+To enable API key authentication, set the following in your `.env` file or docker-compose.yml:
+
+```bash
+API_KEY=your-secret-api-key-here
+REQUIRE_API_KEY=true
+```
 
 ## Usage Examples
 
@@ -93,10 +104,32 @@ curl -X POST http://localhost:8000/v1/embeddings \
   }'
 ```
 
+```bash
+curl -X POST http://localhost:8000/v1/embeddings \
+  -H "Authorization: Bearer your-secret-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Hello, world!",
+    "model": "jina-embeddings-v3",
+    "task": "retrieval.query"
+  }'
+```
+
 ### Rerank Documents
 
 ```bash
 curl -X POST http://localhost:8000/v1/rerank \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What is machine learning?",
+    "documents": ["ML is AI", "Dogs are animals", "Python is a language"],
+    "top_n": 2
+  }'
+```
+
+```bash
+curl -X POST http://localhost:8000/v1/rerank \
+  -H "Authorization: Bearer your-secret-api-key-here" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What is machine learning?",
