@@ -32,6 +32,8 @@ services:
       - RERANKER_MAX_SEQUENCE_LENGTH=1024
       - EMBEDDING_CLIENT_MAX_BATCH=8
       - RUST_LOG=info
+      # - API_KEY=${API_KEY}
+      # - REQUIRE_API_KEY=${REQUIRE_API_KEY:-false}
     volumes:
       - ./model_repository:/app/model_repository
     depends_on:
